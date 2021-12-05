@@ -18,8 +18,6 @@ DBUS_PROP_IFACE = 'org.freedesktop.DBus.Properties'
 
 BLUEZ_SERVICE_NAME = 'org.bluez'
 
-ADV_MONITOR_MANAGER_IFACE = 'org.bluez.AdvertisementMonitorManager1'
-ADV_MONITOR_IFACE = 'org.bluez.AdvertisementMonitor1'
 ADV_MONITOR_APP_BASE_PATH = '/org/bluez/example/adv_monitor_app'
 
 DEVICE_IFACE = 'org.bluez.Device1'

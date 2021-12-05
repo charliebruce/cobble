@@ -32,4 +32,7 @@ in order to receive callbacks rather than polling?
 
 Let's just jump into C/C++ world. discovered [this](https://github.com/makercrew/dbus-sample) guide!
 
+Can compile and run the example code after updating and installing package `libdbus-1-dev`.
+
+
 

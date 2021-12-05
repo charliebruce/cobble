@@ -4,13 +4,11 @@
 #include <cstdio>
 #include <iostream>
 
-int
-main (
-  int argc,
-  char * argv[]
-) {
+int main(int argc, char * argv[]) {
+
     (void)argc;
     (void)argv;
+    
     DBusError dbus_error;
     DBusConnection * dbus_conn = nullptr;
     DBusMessage * dbus_msg = nullptr;
@@ -26,7 +24,7 @@ main (
         ::perror(dbus_error.message);
 
     // Compose remote procedure call
-    } else if ( nullptr == (dbus_msg = ::dbus_message_new_method_call("org.freedesktop.DBus", "/", "org.freedesktop.DBus.Introspectable", "Introspect")) ) {
+    } else if ( nullptr == (dbus_msg = ::dbus_message_new_method_call("org.bluez", "/", "org.freedesktop.DBus.Introspectable", "Introspect")) ) {
         ::dbus_connection_unref(dbus_conn);
         ::perror("ERROR: ::dbus_message_new_method_call - Unable to allocate memory for the message!");
 
