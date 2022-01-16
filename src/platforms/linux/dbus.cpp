@@ -5,6 +5,8 @@
 #include <iostream>
 #include <unistd.h>
 
+using namespace std;
+
 DBusError dbus_error;
 DBusConnection * dbus_conn = nullptr;
 DBusMessage * dbus_msg = nullptr;
@@ -13,10 +15,10 @@ DBusMessage * dbus_reply = nullptr;
 void dbus_cleanup(bool err) {
     
     if(dbus_reply != nullptr)
-        ::dbus_message_unref(dbus_reply);
+        dbus_message_unref(dbus_reply);
     
     if(dbus_msg != nullptr)
-        ::dbus_message_unref(dbus_msg);
+        dbus_message_unref(dbus_msg);
     
     /*
      * Applications must not close shared connections -
@@ -25,11 +27,11 @@ void dbus_cleanup(bool err) {
     //::dbus_connection_close(dbus_conn);
 
     if(dbus_conn != nullptr)
-        ::dbus_connection_unref(dbus_conn);
+        dbus_connection_unref(dbus_conn);
         
     if(err) {
-        ::perror(dbus_error.name);
-        ::perror(dbus_error.message);
+        perror(dbus_error.name);
+        perror(dbus_error.message);
     }
 }
 
@@ -59,35 +61,44 @@ int main(int argc, char * argv[]) {
     //const char * dbus_result = nullptr;
 
     // Initialize D-Bus error
-    ::dbus_error_init(&dbus_error);
+    dbus_error_init(&dbus_error);
 
     // Connect to D-Bus
-    if ( nullptr == (dbus_conn = ::dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error)) ) {
+    if ( nullptr == (dbus_conn = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error)) ) {
         dbus_cleanup(true);
         return -1;
     }
-
+    
+    // TODO Connect to signals of interest
+    //dbus_bus_add_match(dbus_conn, "type='signal',interface='test.signal.Type'", &err);
+    
     // Compose remote procedure call
-    if ( nullptr == (dbus_msg = ::dbus_message_new_method_call("org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1", "StartDiscovery")) ) {
+    if ( nullptr == (dbus_msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1", "StartDiscovery")) ) {
         dbus_cleanup(true);
         ::perror("ERROR: ::dbus_message_new_method_call - Unable to allocate memory for the message!");
         return -2;
     }
         
     // Invoke remote procedure call, block for response
-    if ( nullptr == (dbus_reply = ::dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error)) ) {
+    if ( nullptr == (dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error)) ) {
         dbus_cleanup(true);
         return -3;
     }
 
     // Parse response
-    if ( !::dbus_message_get_args(dbus_reply, &dbus_error, DBUS_TYPE_INVALID) ) {
+    if ( !dbus_message_get_args(dbus_reply, &dbus_error, DBUS_TYPE_INVALID) ) {
         dbus_cleanup(true);
         return -4;
     }
+    
+    // TODO: Inspect the reply for errors
 
     // Work with the results of the remote procedure call
-    std::cout << "Connected to D-Bus as \"" << ::dbus_bus_get_unique_name(dbus_conn) << "\"." << std::endl;
+    cout << "Connected to D-Bus as \"" << dbus_bus_get_unique_name(dbus_conn) << "\"." << endl;
+    
+    // We're done with the first message and the reply
+    dbus_message_unref(dbus_msg);
+    dbus_message_unref(dbus_reply);
 
     // Adapter is scanning. Wait 5s for results to arrive.
     sleep(5);
@@ -100,14 +111,14 @@ int main(int argc, char * argv[]) {
     // We only need the keys of the parent to list devices.
     
     // Compose remote procedure call
-    if ( nullptr == (dbus_msg = ::dbus_message_new_method_call("org.bluez", "/", "org.freedesktop.DBus.ObjectManager", "GetManagedObjects")) ) {
+    if ( nullptr == (dbus_msg = dbus_message_new_method_call("org.bluez", "/", "org.freedesktop.DBus.ObjectManager", "GetManagedObjects")) ) {
         dbus_cleanup(true);
-        ::perror("ERROR: ::dbus_message_new_method_call - Unable to allocate memory for the second message!");
+        perror("ERROR: dbus_message_new_method_call - Unable to allocate memory for the second message!");
         return -5;
     }
     
     // Invoke remote procedure call, block for response
-    if ( nullptr == (dbus_reply = ::dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error)) ) {
+    if ( nullptr == (dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error)) ) {
         dbus_cleanup(true);
         return -6;
     }
@@ -133,14 +144,18 @@ int main(int argc, char * argv[]) {
         dbus_message_iter_recurse(&iter_dict, &iter_dict_entry);
         char* key;
         dbus_message_iter_get_basic(&iter_dict_entry, &key);
-        std::cout<<key<<std::endl;
+        cout<<key<<endl;
         dbus_message_iter_next(&iter_dict_entry);
+        // Should now be in the Value - a VARIANT
+        
         //we have variant now, do something with contents?
         dbus_message_iter_next(&iter_dict);
     }
     
-    std::cout<<"got btotal "<<entries<<std::endl;
+    cout << "Got a total of " << entries << endl;
     
     dbus_cleanup(false);
     return 0;
 }
+
+
