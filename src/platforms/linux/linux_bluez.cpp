@@ -5,12 +5,20 @@
 #include <iostream>
 #include <unistd.h>
 
+#include "../../cobble.h"
+
 using namespace std;
 
 DBusError dbus_error;
 DBusConnection * dbus_conn = nullptr;
 DBusMessage * dbus_msg = nullptr;
 DBusMessage * dbus_reply = nullptr;
+
+CobbleStatus status = Uninitialised;
+
+CobbleStatus cobble_status(void) {
+    return status;
+}
 
 void dbus_cleanup(bool err) {
     
@@ -21,18 +29,69 @@ void dbus_cleanup(bool err) {
         dbus_message_unref(dbus_msg);
     
     /*
-     * Applications must not close shared connections -
-     * see dbus_connection_close() docs. This is a bug in the application.
+     * Applications must not close shared connections.
+     * See dbus_connection_close() docs. 
+     * The following would be an application bug:
      */
-    //::dbus_connection_close(dbus_conn);
+    //dbus_connection_close(dbus_conn);
 
     if(dbus_conn != nullptr)
         dbus_connection_unref(dbus_conn);
         
     if(err) {
+        status = CobbleError;
         perror(dbus_error.name);
         perror(dbus_error.message);
     }
+}
+
+void cobble_subscribe(const char* char_uuid) {
+    (void) char_uuid;
+    // TODO: This
+}
+
+void cobble_read(const char* char_uuid) {
+    (void) char_uuid;
+    // TODO: This
+}
+
+void cobble_write(const char* char_uid, uint8_t *data, int len) {
+    (void) char_uid;
+    (void) data;
+    (void) len;
+    // TODO: This
+}
+
+void cobble_connect(const char* identifier) {
+    (void) identifier;
+    // TODO: This
+}
+
+void cobble_scan_start(void) {
+    
+    // Compose remote procedure call
+    if ( nullptr == (dbus_msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1", "StartDiscovery")) ) {
+        dbus_cleanup(true);
+        ::perror("ERROR: dbus_message_new_method_call - Unable to allocate memory for the message!");
+        return;
+    }
+        
+    // Invoke remote procedure call, block for response
+    if ( nullptr == (dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error)) ) {
+        dbus_cleanup(true);
+        return;
+    }
+
+    // Parse response
+    if ( !dbus_message_get_args(dbus_reply, &dbus_error, DBUS_TYPE_INVALID) ) {
+        dbus_cleanup(true);
+        return;
+    }
+    
+    // We're done with the first message and the reply
+    dbus_message_unref(dbus_msg);
+    dbus_message_unref(dbus_reply);
+    
 }
 
 bool dict_open(DBusMessageIter *iter, DBusMessageIter *iter_dict) {
@@ -53,53 +112,9 @@ bool dict_has_entry(DBusMessageIter *iter_dict) {
     return dbus_message_iter_get_arg_type(iter_dict) == DBUS_TYPE_DICT_ENTRY;
 }
 
-int main(int argc, char * argv[]) {
-
-    (void)argc;
-    (void)argv;
+void cobble_loop(void) {
+    // TODO: This
     
-    //const char * dbus_result = nullptr;
-
-    // Initialize D-Bus error
-    dbus_error_init(&dbus_error);
-
-    // Connect to D-Bus
-    if ( nullptr == (dbus_conn = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error)) ) {
-        dbus_cleanup(true);
-        return -1;
-    }
-    
-    // TODO Connect to signals of interest
-    //dbus_bus_add_match(dbus_conn, "type='signal',interface='test.signal.Type'", &err);
-    
-    // Compose remote procedure call
-    if ( nullptr == (dbus_msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1", "StartDiscovery")) ) {
-        dbus_cleanup(true);
-        ::perror("ERROR: ::dbus_message_new_method_call - Unable to allocate memory for the message!");
-        return -2;
-    }
-        
-    // Invoke remote procedure call, block for response
-    if ( nullptr == (dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error)) ) {
-        dbus_cleanup(true);
-        return -3;
-    }
-
-    // Parse response
-    if ( !dbus_message_get_args(dbus_reply, &dbus_error, DBUS_TYPE_INVALID) ) {
-        dbus_cleanup(true);
-        return -4;
-    }
-    
-    // TODO: Inspect the reply for errors
-
-    // Work with the results of the remote procedure call
-    cout << "Connected to D-Bus as \"" << dbus_bus_get_unique_name(dbus_conn) << "\"." << endl;
-    
-    // We're done with the first message and the reply
-    dbus_message_unref(dbus_msg);
-    dbus_message_unref(dbus_reply);
-
     // Adapter is scanning. Wait 5s for results to arrive.
     sleep(5);
     
@@ -114,13 +129,13 @@ int main(int argc, char * argv[]) {
     if ( nullptr == (dbus_msg = dbus_message_new_method_call("org.bluez", "/", "org.freedesktop.DBus.ObjectManager", "GetManagedObjects")) ) {
         dbus_cleanup(true);
         perror("ERROR: dbus_message_new_method_call - Unable to allocate memory for the second message!");
-        return -5;
+        return;
     }
     
     // Invoke remote procedure call, block for response
     if ( nullptr == (dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error)) ) {
         dbus_cleanup(true);
-        return -6;
+        return;
     }
     
     // We get a dictionary back.
@@ -133,7 +148,7 @@ int main(int argc, char * argv[]) {
     if(!dict_open(&iter, &iter_dict))
     {
         dbus_cleanup(true);
-        return -7;
+        return;
     }
     
     int entries=0;
@@ -154,8 +169,37 @@ int main(int argc, char * argv[]) {
     
     cout << "Got a total of " << entries << endl;
     
+    
+}
+
+void cobble_init(void) {
+    
+    // Initialize D-Bus error
+    dbus_error_init(&dbus_error);
+
+    // Connect to D-Bus
+    if ( nullptr == (dbus_conn = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error)) ) {
+        dbus_cleanup(true);
+        return;
+    }
+    
+    // TODO Connect to signals of interest
+    //dbus_bus_add_match(dbus_conn, "type='signal',interface='test.signal.Type'", &err);
+    
+    
+    
+    // TODO: Inspect the reply for errors
+
+    // Work with the results of the remote procedure call
+    cout << "Connected to D-Bus as \"" << dbus_bus_get_unique_name(dbus_conn) << "\"." << endl;
+    
+    status = Initialised;
+    
+}
+
+void cobble_shutdown(void) {
     dbus_cleanup(false);
-    return 0;
+    cout << "Cobble shut down" << endl;
 }
 
 

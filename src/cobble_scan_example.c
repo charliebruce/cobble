@@ -59,7 +59,7 @@ void on_scanresult(const char* name, int RSSI, const char* identifier) {
         
         connecting = true;
 
-        printf("\n\n --- Identified a device!\n\n");
+        printf("\n\n --- Identified a Beeline, RSSI: %i!\n\n", RSSI);
         
         cobble_connect(identifier);
 
@@ -159,6 +159,8 @@ DWORD WINAPI runner(void* data) {
 #else
 void *runner(void* vargp) {
 #endif
+    
+    (void) vargp; // Unused parameter
 
     mainthread();
 //    cobble_shutdown();    
