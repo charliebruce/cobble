@@ -80,8 +80,10 @@ void on_characteristicdiscovered(const char* svc_uuid, const char* char_uuid) {
 }
 
 void on_updatevalue(const char* id, const uint8_t* data, int len) {
+    
+    (void) data; // Unused
 
-    printf("Received data from device with length %i\n", len);
+    printf("Received data from device %s with length %i\n", id, len);
 }
 
 void mainthread(void) {
@@ -118,7 +120,7 @@ void mainthread(void) {
 
     int timeout = 30 * 1000000;
     while(timeout > 0 && cobble_status() == Scanning) {
-#ifndef __APPLE__
+#ifdef WIN32
         cobble_queue_process();
 #endif
         usleep(10000); //10ms
@@ -129,7 +131,7 @@ void mainthread(void) {
 
     int time = 0;
     while(cobble_status() == Connecting || cobble_status() == Connected) {
-#ifndef __APPLE__
+#ifdef WIN32
         cobble_queue_process();
 #endif
         usleep(10000); //10ms
@@ -182,7 +184,8 @@ int main(void) {
 #endif
 
     //Handle delegate callbacks on main thread
-#ifdef __APPLE__
+    //Required on Apple and Linux, not on Windows
+#ifndef WIN32
     cobble_loop();
 #endif
     //cobble_queue_process();

@@ -45,45 +45,48 @@ void dbus_cleanup(bool err) {
     }
 }
 
-void cobble_subscribe(const char* char_uuid) {
+extern "C" void cobble_subscribe(const char* char_uuid) {
     (void) char_uuid;
     // TODO: This
 }
 
-void cobble_read(const char* char_uuid) {
+extern "C" void cobble_read(const char* char_uuid) {
     (void) char_uuid;
     // TODO: This
 }
 
-void cobble_write(const char* char_uid, uint8_t *data, int len) {
+extern "C" void cobble_write(const char* char_uid, uint8_t *data, int len) {
     (void) char_uid;
     (void) data;
     (void) len;
     // TODO: This
 }
 
-void cobble_connect(const char* identifier) {
+extern "C" void cobble_connect(const char* identifier) {
     (void) identifier;
     // TODO: This
 }
 
-void cobble_scan_start(void) {
+extern "C" void cobble_scan_start(const char* service_uuids) {
+    
+    // TODO: Implement service filtering
+    (void) service_uuids;
     
     // Compose remote procedure call
-    if ( nullptr == (dbus_msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1", "StartDiscovery")) ) {
+    if (nullptr == (dbus_msg = dbus_message_new_method_call("org.bluez", "/org/bluez/hci0", "org.bluez.Adapter1", "StartDiscovery"))) {
         dbus_cleanup(true);
         ::perror("ERROR: dbus_message_new_method_call - Unable to allocate memory for the message!");
         return;
     }
         
     // Invoke remote procedure call, block for response
-    if ( nullptr == (dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error)) ) {
+    if (nullptr == (dbus_reply = dbus_connection_send_with_reply_and_block(dbus_conn, dbus_msg, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error))) {
         dbus_cleanup(true);
         return;
     }
 
     // Parse response
-    if ( !dbus_message_get_args(dbus_reply, &dbus_error, DBUS_TYPE_INVALID) ) {
+    if (!dbus_message_get_args(dbus_reply, &dbus_error, DBUS_TYPE_INVALID)) {
         dbus_cleanup(true);
         return;
     }
@@ -112,7 +115,7 @@ bool dict_has_entry(DBusMessageIter *iter_dict) {
     return dbus_message_iter_get_arg_type(iter_dict) == DBUS_TYPE_DICT_ENTRY;
 }
 
-void cobble_loop(void) {
+extern "C" void cobble_loop(void) {
     // TODO: This
     
     // Adapter is scanning. Wait 5s for results to arrive.
@@ -159,9 +162,11 @@ void cobble_loop(void) {
         dbus_message_iter_recurse(&iter_dict, &iter_dict_entry);
         char* key;
         dbus_message_iter_get_basic(&iter_dict_entry, &key);
-        cout<<key<<endl;
+         cout<<key<<endl;
         dbus_message_iter_next(&iter_dict_entry);
         // Should now be in the Value - a VARIANT
+        
+        // TODO: Dispatch scan result if the entry is new or updated
         
         //we have variant now, do something with contents?
         dbus_message_iter_next(&iter_dict);
@@ -172,7 +177,7 @@ void cobble_loop(void) {
     
 }
 
-void cobble_init(void) {
+extern "C" void cobble_init(void) {
     
     // Initialize D-Bus error
     dbus_error_init(&dbus_error);
@@ -185,10 +190,6 @@ void cobble_init(void) {
     
     // TODO Connect to signals of interest
     //dbus_bus_add_match(dbus_conn, "type='signal',interface='test.signal.Type'", &err);
-    
-    
-    
-    // TODO: Inspect the reply for errors
 
     // Work with the results of the remote procedure call
     cout << "Connected to D-Bus as \"" << dbus_bus_get_unique_name(dbus_conn) << "\"." << endl;
@@ -197,7 +198,7 @@ void cobble_init(void) {
     
 }
 
-void cobble_shutdown(void) {
+extern "C" void cobble_shutdown(void) {
     dbus_cleanup(false);
     cout << "Cobble shut down" << endl;
 }
