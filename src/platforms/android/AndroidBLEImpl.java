@@ -247,7 +247,8 @@ public class AndroidBLEImpl {
 
     }
 
-    private static void processQueuedOperations() {
+    // This method must be synchronized to prevent two operations from being launched simultaneously.
+    private static synchronized void processQueuedOperations() {
 
         //If a write is already in process, don't need to start another - the next item will be handled on callback when the previous one completes
         if(operationInProgress)
