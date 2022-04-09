@@ -2,8 +2,8 @@
 
 This project aims to abstract out platform-specific differences, and make Bluetooth LE consistent to use across:
 
-* Windows (WinRT only)
-* Linux
+* Windows (WinRT)
+* Linux (BlueZ)
 * macOS
 * iOS
 * Android
@@ -15,8 +15,6 @@ It will eventually provide bindings for, at least:
 * Python 3
 
 It will achieve this by channeling the platform-specific calls / functionality through a C middleware, compiled into a library. Unity, Python etc will then call the native C functions within the library.
-
-It will follow a similar approach on each platform to the [Chromium](https://chromium.googlesource.com/chromium/src/+/master/device/bluetooth/) and [Qt](https://github.com/qt/qtconnectivity/tree/dev/src/bluetooth) Bluetooth layers, but will be much lighter and easier to understand.
 
 ## Uses
 
@@ -39,12 +37,17 @@ It is NOT currently intended to support:
 * Integration into large or complex projects - these may be better suited to integrating Chromium
 * Anything safety-critical or high-reliability
 
+## Status
+
+This entire project should be considered a work-in-progress with an unstable interface, however the Android, iOS and macOS implementations are well-tested and robust. WinRT is working but largely untested. Linux (BlueZ) is in development and not ready for use.
+
+The bindings are rough examples only, you should use them as a starting point rather than a full reference implementation.
 
 ## Getting Started
 
 ### Building
 
-Run the relevant build script, copy out the produced DLL/SO/DYLIB.
+Run the relevant build script within `src/`. Binaries are created within `src/build`.
 
 ### C/C++
 
@@ -52,20 +55,15 @@ See C header file `src/cobble.h`.
 
 ### Unity
 
-TODO: Describe DLL structure and binding interface script.
+An example binding script can be found within `bindings/unity`. You should build and import the libraries for each platform you intend to support, making sure you configure the architectures / platforms correctly for each library.
 
 ### Python
 
-TODO: This.
+An example binding is found within `bindings/python`.
 
-
-
-## Status
-
-This entire project is a work-in-progress.
 
 ## Platform-specific limitations
 
 * iOS / macOS don't tell you whether a characteristic value has been obtained as a result of a notification or a read.
-* macOS Monterey doesn't support scanning unless an advertised service UUID is known - using a blank service filter gives no scan results (rather than all scan results). iOS appears unaffected. See [#10](https://github.com/charliebruce/cobble/issues/10) for more information. 
+* macOS Monterey doesn't support scanning unless an advertised service UUID is known - using a blank service filter gives no scan results (rather than all scan results). iOS appears unaffected.
 
