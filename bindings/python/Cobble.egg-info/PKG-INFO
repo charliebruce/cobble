@@ -1,0 +1,22 @@
+Metadata-Version: 1.0
+Name: cobble
+Version: 0.0.1
+Summary: Python library for interacting with Bluetooth LE devices in a cross-platform way
+Home-page: https://github.com/charliebruce/cobble/
+Author: Charlie Bruce
+Author-email: charliebruce@gmail.com
+License: MIT
+Description: # Cobble Bindings for Python
+        
+        Could be implemented in 2 ways:
+        
+        * CDLL
+        * Extension Module
+        
+        For now we will use CDLL
+        
+        
+        ## macOS
+        
+        On macOS, a event loop (NSRunLoop) is required for interating with CoreBluetooth - work must not be done on the main thread.
+Platform: UNKNOWN
