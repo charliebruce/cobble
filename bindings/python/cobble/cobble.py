@@ -45,6 +45,11 @@ class CobbleStatus(IntEnum):
     Connected = 4
     CobbleError = 5
 
+class ConnectionEvent(IntEnum):
+    DidDisconnect = 0
+    DidConnect = 1
+    DidConnectFailed = 2
+
 plugin.cobble_connect.restype = None
 plugin.cobble_connect.argtypes = [c_char_p]
 plugin.cobble_subscribe.restype = None
@@ -97,7 +102,13 @@ def updatevalue_cb(characteristic_uuid, data, length):
 plugin.register_updatevalue_cb(updatevalue_cb)
 
 
-
+@CFUNCTYPE(None, c_char_p, c_int)
+def connectionstatus_cb(identifier, e):
+    print(f"Got a connection status change event for device {identifier}: {e}")
+    if ConnectionEvent(e) == ConnectionEvent.DidDisconnect:
+        characteristics = [] # Clear the cache
+        # Preserve queued updates though, we might have a backlog
+plugin.register_connectionstatus_cb(connectionstatus_cb)
 
 def init():
     print("Cobble init")
@@ -114,6 +125,9 @@ def start_scan():
     print("Cobble start scan")
     plugin.cobble_scan_start()
     pass
+
+def stop_scan():
+    plugin.cobble_scan_stop()
 
 def connect(name):
     plugin.cobble_connect(name.encode('utf-8'))
