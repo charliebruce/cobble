@@ -7,6 +7,7 @@ import sys
 import os
 from queue import Queue, Empty
 import signal
+from enum import IntEnum
 
 # Required for runloop
 if platform.system() == 'Darwin':
@@ -31,8 +32,18 @@ c_byte_p = POINTER(c_byte)
 plugin.cobble_init.restype = None
 plugin.cobble_deinit.restype = None
 plugin.cobble_scan_start.restype = None
-#plugin.cobble_scan_stop.restype = None
+plugin.cobble_scan_stop.restype = None
 plugin.register_scanresult_cb.restype = None
+
+plugin.cobble_status.restype = c_int
+
+class CobbleStatus(IntEnum):
+    Uninitialised = 0
+    Initialised = 1
+    Scanning = 2
+    Connecting = 3
+    Connected = 4
+    CobbleError = 5
 
 plugin.cobble_connect.restype = None
 plugin.cobble_connect.argtypes = [c_char_p]
@@ -91,7 +102,11 @@ plugin.register_updatevalue_cb(updatevalue_cb)
 def init():
     print("Cobble init")
     plugin.cobble_init()
-    # TODO: Await cobble_status giving Initialised or Error...
+
+    # Await either completion or failure
+    while(CobbleStatus(plugin.cobble_status()) not in [CobbleStatus.Initialised, CobbleStatus.CobbleError]):
+        pass
+    
     pass
 
 
