@@ -60,7 +60,11 @@ CoreBluetoothBackend* appleBackend = NULL;
 }
 
 - (void)write:(CBCharacteristic*) characteristic length:(uint8_t) len dataPtr:(uint8_t*) data {
-    [_currentPeripheral writeValue:[NSData dataWithBytes:data length:len] forCharacteristic:characteristic type:CBCharacteristicWriteWithoutResponse];
+    if([characteristic properties] & CBCharacteristicPropertyWriteWithoutResponse) {
+        [_currentPeripheral writeValue:[NSData dataWithBytes:data length:len] forCharacteristic:characteristic type:CBCharacteristicWriteWithoutResponse];
+    } else {
+        [_currentPeripheral writeValue:[NSData dataWithBytes:data length:len] forCharacteristic:characteristic type:CBCharacteristicWriteWithResponse];
+    }
 }
 
 - (void)cleanup {
