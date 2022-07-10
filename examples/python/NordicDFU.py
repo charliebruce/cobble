@@ -13,6 +13,12 @@ dfu_sv_uuid = "0000FE59-0000-1000-8000-00805F9B34FB"
 dfu_ctrl_uuid = "8EC90001-F315-4F60-9FB8-838830DAEA50"
 dfu_data_uuid = "8EC90002-F315-4F60-9FB8-838830DAEA50"
 
+legacy_sv_uuid = "00001530-1212-EFDE-1523-785FEABCD123"
+legacy_ctrl_uuid = "00001531-1212-EFDE-1523-785FEABCD123"
+legacy_data_uuid = "00001532-1212-EFDE-1523-785FEABCD123"
+legacy_revision_uuid = "00001534-1212-EFDE-1523-785FEABCD123"
+
+# Refer to dfu/nrf_dfu_types.h
 class NRF_DFU_OBJ_TYPE(IntEnum):
     INVALID = 0,                   #!< Invalid object type.
     COMMAND = 1,                   #!< Command object.
@@ -80,6 +86,35 @@ class NRF_DFU_EXT_ERROR(IntEnum):
     VERIFICATION_FAILED       = 0x0C     # The hash of the received firmware image does not match the hash in the init packet. */
     INSUFFICIENT_SPACE        = 0x0D     # The available space on the device is insufficient to hold the firmware. */
 
+# Refer to components/ble/ble_services/ble_dfu/ble_dfu.h and ble_dfu.c
+class NRF_LEGACY_DFU_OP(IntEnum):
+    START_DFU = 1
+    INIT_DFU_PARAMS = 2
+    RECV_FW_IMG = 3
+    VALIDATE_FW = 4
+    ACTIVATE_IMG_RST = 5
+    RESET = 6
+    REPORT_SIZE = 7
+    RECEIPT_REQ = 8
+    RESPONSE = 16
+    RECEIPT_NOTIF = 17
+
+
+class NRF_LEGACY_DFU_RESPONSE(IntEnum):
+    SUCCESS = 1
+    INVALID_STATE = 2
+    NOT_SUPPORTED = 3
+    DATA_LIMIT_EXCEEDED = 4
+    CRC_ERROR = 5
+    OPERATION_FAILED = 6
+
+class LEGACY_PROCEDURES(IntEnum):
+    BLE_DFU_START_PROCEDURE        = 1                                 #/**< DFU Start procedure.*/
+    BLE_DFU_INIT_PROCEDURE         = 2                                 #/**< DFU Initialization procedure.*/
+    BLE_DFU_RECEIVE_APP_PROCEDURE  = 3                                 #/**< Firmware receiving procedure.*/
+    BLE_DFU_VALIDATE_PROCEDURE     = 4                                 #/**< Firmware image validation procedure .*/
+    BLE_DFU_PKT_RCPT_REQ_PROCEDURE = 8                                 #/**< Packet receipt notification request procedure. */
+
 
 def load_firmware(fname):
     with zipfile.ZipFile(fname) as zf:
@@ -101,15 +136,30 @@ def set_data(data, chunk_size=244):
         next_size = min(chunk_size, len(data)-bytes_sent)
         segment = data[bytes_sent : bytes_sent + next_size]
         cobble.write(dfu_data_uuid, segment)
-        sleep(0.1)
+        sleep(0.1) # TODO: Use receipt request rather than fixed delay for speed?
+        bytes_sent += next_size
+
+def set_legacy_data(data, chunk_size=20):
+    # When reviewing bootloader code - note that these are still handled by nrf_dfu_req_handler
+    # They just have the type NRF_DFU_OP_OBJECT_WRITE appended automatically
+    bytes_sent = 0
+    while(bytes_sent < len(data)):
+        # Take the next chunk of data
+        next_size = min(chunk_size, len(data)-bytes_sent)
+        segment = data[bytes_sent : bytes_sent + next_size]
+        cobble.write(legacy_data_uuid, segment)
+        sleep(0.1) # TODO: Use receipt request rather than fixed delay for speed?
         bytes_sent += next_size
 
 
 
 def set_control(data):
     cobble.write(dfu_ctrl_uuid, bytes(data))
+
+def set_legacy_control(data):
+    cobble.write(legacy_ctrl_uuid, bytes(data))
     
-def expect_response():
+def expect_response(legacy = False):
 
     # Await a notification
     while (notif := cobble.get_updatevalue()) == None:
@@ -117,6 +167,10 @@ def expect_response():
 
     # Response data
     rd = notif[1]
+
+    # TODO: Handle errors for legacy DFU
+    if legacy:
+        return rd
 
     # Confirm that it's a response to a command
     op = NRF_DFU_OP(rd[0])
@@ -142,15 +196,142 @@ def u32le(i):
 def u32tole(i):
     return [(i & 0xFF), ((i >> 8) & 0xFF), ((i >> 16) & 0xFF), ((i >> 24) & 0xFF)]
 
+def u16le(i):
+    return ((i[0]<<0) | (i[1]<<8))
+
+def u16tole(i):
+    return [(i & 0xFF), ((i >> 8) & 0xFF)]
+
+# Wireshark capture shows:
+# 1: M->S: Control: Start DFU (0x01), Application (0x04)
+# 2: M->S: Packet: 000000000000000000ec0100
+# 3: S->M: Control: Response (0x10), Start DFU (0x01), Success (0x01)
+# 4: M->S: Control: Init DFU (0x02), Receive Init Packet (0x00)
+# 5: M->S: Packet: ffffffffffffffff0100feff20b0
+# 6: M->S: Control: Init DFU (0x02), Finish Init Packet (0x01)
+# 7: S->M: Control: Response (0x10), Init DFU params (0x02), Success (0x01)
+# 8: M->S: Control: Please Give Me Receipts (0x08), Every 12 packets (0x0c 0x00)
+# 9: M->S: Control: Receive FW Image (0x03)
+# (14 times): M->S: Packet: (20 bytes)
+# S->M: Control: Receipt (0x11), 240 bytes received (0xf0 0x00 0x00 0x00)
+# (14 times): M->S: Packet: (20 bytes)
+# S->M: Control: Receipt (0x11), 480 bytes received (0xe0 0x01 0x00 0x00)
+# (repeats above 2 steps until all data sent)
+# S->M: Control: Response (0x10), Receive FW Image (0x03), Success (0x03)
+# M->S (Validate)
+# S->M (Validate is success)
+# M->S (Activate and Reset)
+# (Connection terminates)
+
+# Why do we write 14 packets * 20 bytes = 280 bytes, but report 240 bytes received?
+
 
 def do_legacy_update(fname, identifier):
     # Legacy DFU was a prototype / early implementation of DFU up until around 2016. It was
     # replaced with Secure DFU around 2017 or so. Older devices (around SDK 10) will still
-    # require this legacy approach to be used. The structure is broadly similar, but 
-    # 
+    # require this legacy approach to be used. The structure is broadly similar.
+
+    bin_file, dat_file = load_firmware(fname)
+
+    cobble.connect(identifier)
+    # TODO: Await connection event rather than just sleeping
+    sleep(2)
+
+    assert len(cobble.characteristics) > 0, "Failed to find DFU characteristics in time"
+
+    from pprint import pprint
+
+    assert (legacy_sv_uuid, legacy_ctrl_uuid) in cobble.characteristics, "Missing DFU Control characteristic"
+    assert (legacy_sv_uuid, legacy_data_uuid) in cobble.characteristics, "Missing DFU Packet characteristic"
+
+    # DFU Process
+    print("Subscribing...")
+
+    # Listen for changes on the DFU Control characteristic
+    cobble.subscribe(legacy_ctrl_uuid)
+    sleep(4)
+
+    print("Initialising Legacy DFU...")
+
+    # Start DFU process
+    set_legacy_control(bytes([NRF_LEGACY_DFU_OP.START_DFU, 0x04])) # Op 1
+
+    # Tell bootloader expected DFU size and other config
+    bl_cfg = bytes([0x00] * 8 + u32tole(len(bin_file)))
+    set_legacy_data(bl_cfg) # Handled by start_data_process - Op 2
+
+    rd = expect_response(legacy=True) # Op 3
+    pprint(rd) # If we're resuming, the next assert will fail
+    assert rd == bytes([NRF_LEGACY_DFU_OP.RESPONSE, LEGACY_PROCEDURES.BLE_DFU_START_PROCEDURE, NRF_LEGACY_DFU_RESPONSE.SUCCESS]), "Got a bad response"
+
+    # Send the init packet
+    set_legacy_control(bytes([NRF_LEGACY_DFU_OP.INIT_DFU_PARAMS, 0x00])) # DFU_INIT_RX - Op 4
+    set_legacy_data(dat_file) # Handled by init_data_process # Op 5
+    set_legacy_control(bytes([NRF_LEGACY_DFU_OP.INIT_DFU_PARAMS, 0x01])) # DFU_INIT_COMPLETE - Op 6
+    
+    rd = expect_response(legacy=True) # Op 7
+    pprint(rd) # If we're resuming, the next assert will fail
+    assert rd == bytes([NRF_LEGACY_DFU_OP.RESPONSE, LEGACY_PROCEDURES.BLE_DFU_INIT_PROCEDURE, NRF_LEGACY_DFU_RESPONSE.SUCCESS]), "Got a bad response"
+    
+    print("Init OK...")
+
+    # Requiest delivery receipts every N slices of data
+    receipt_interval = 12
+    interval = u16tole(receipt_interval)
+    set_legacy_control(bytes([NRF_LEGACY_DFU_OP.RECEIPT_REQ, interval[0], interval[1]])) # Op 8
+    # No response if OK. Will respond with BLE_DFU_PKT_RCPT_REQ_PROCEDURE, BLE_DFU_RESP_VAL_NOT_SUPPORTED if we send an invalid command (ie wrong length).
+
+    # Tell the target to expect data
+    set_legacy_control(bytes([NRF_LEGACY_DFU_OP.RECV_FW_IMG])) # Op 9
+    # No response expected.
+
+    print("Transferring data in slices...")
+    # Send the data in slices of 20 bytes
+    size = 20
+    slices = [bin_file[i:i+size] for i in range(0, len(bin_file), size)]
+    sent = 0
+    for s in tqdm(slices):
+
+        set_legacy_data(s) # handled by app_data_process
+        sent += 1
+
+        # We expect this to fire once every receipt_interval times
+        # TODO: Why do we request 12 but get every 14?!
+        # Note - we skip the last one, because it's not a receipt but a success result...
+        if sent % 14 == 0 and (sent < len(slices)): 
+            rd = expect_response(legacy=True)
+            pprint(rd)
+            #assert rd[0] == NRF_LEGACY_DFU_OP.RECEIPT_NOTIF, "Bad response, expected a receipt"
+            # TODO: Verify the remaining 4 bytes are equal to num_of_firmware_bytes_rcvd
+            sleep(1)
+
+            # Keep alive by requesting the size every so often???
+            set_legacy_control(bytes([NRF_LEGACY_DFU_OP.REPORT_SIZE]))
+            rd = expect_response(legacy=True)
+            pprint("Size report incoming: ")
+            pprint(rd)
+
+    # Verify that the firmware thinks the transfer is complete
+    rd = expect_response(legacy=True)
+    pprint(rd)
+    assert rd == bytes([NRF_LEGACY_DFU_OP.RESPONSE, LEGACY_PROCEDURES.BLE_DFU_VALIDATE_PROCEDURE, NRF_LEGACY_DFU_RESPONSE.SUCCESS]), "Firmware doesn't think transfer is complete"
+
+    # Validate
+    set_legacy_control(bytes([NRF_LEGACY_DFU_OP.VALIDATE_FW]))
+    rd = expect_response()
+    assert rd == bytes([NRF_LEGACY_DFU_OP.RESPONSE, LEGACY_PROCEDURES.BLE_DFU_VALIDATE_PROCEDURE, NRF_LEGACY_DFU_RESPONSE.SUCCESS]), "Got a bad response"
+
+    # Wait whilst target commits the data
+    sleep(1)
+    
+    # Activate and reset
+    set_legacy_control(bytes([NRF_LEGACY_DFU_OP.ACTIVATE_IMG_RST]))
+    
+    print("DONE")
     pass
 
-
+def do_buttonless_entry(identifier):
+    raise NotImplementedError
 
 def do_secure_update(fname, identifier):
 
