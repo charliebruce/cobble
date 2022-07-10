@@ -4,6 +4,7 @@ from cobble import cobble
 from time import sleep
 from enum import IntEnum
 from binascii import crc32
+from tqdm import tqdm
 
 # Implementation of Nordic Secure BLE using Cobble
 # Legacy has subtle differences.
@@ -92,11 +93,9 @@ def load_firmware(fname):
 
 
 def set_data(data, chunk_size=244):
-    # When reviewing bootloader code - note that these are still handled 
+    # When reviewing bootloader code - note that these are still handled by nrf_dfu_req_handler
     # They just have the type NRF_DFU_OP_OBJECT_WRITE appended automatically
-
     bytes_sent = 0
-    print(f"Sending {len(data)} bytes in {chunk_size} byte chunks")
     while(bytes_sent < len(data)):
         # Take the next chunk of data
         next_size = min(chunk_size, len(data)-bytes_sent)
@@ -104,8 +103,7 @@ def set_data(data, chunk_size=244):
         cobble.write(dfu_data_uuid, segment)
         sleep(0.1)
         bytes_sent += next_size
-        print(f"Sent {bytes_sent} of {len(data)} bytes...")
-    print("Transfer complete")
+
 
 
 def set_control(data):
@@ -137,17 +135,22 @@ def expect_response():
     assert res == NRF_DFU_RES_CODE.SUCCESS, f"Device replied with an error response {res}:{res.name}"
 
     return rd
-    
-
-def do_legacy_update(fname, identifier):
-    # TODO: Implement
-    pass
 
 def u32le(i):
     return ((i[0]<<0) | (i[1]<<8) | (i[2]<<16) | (i[3]<<24))
 
 def u32tole(i):
     return [(i & 0xFF), ((i >> 8) & 0xFF), ((i >> 16) & 0xFF), ((i >> 24) & 0xFF)]
+
+
+def do_legacy_update(fname, identifier):
+    # Legacy DFU was a prototype / early implementation of DFU up until around 2016. It was
+    # replaced with Secure DFU around 2017 or so. Older devices (around SDK 10) will still
+    # require this legacy approach to be used. The structure is broadly similar, but 
+    # 
+    pass
+
+
 
 def do_secure_update(fname, identifier):
 
@@ -227,10 +230,9 @@ def do_secure_update(fname, identifier):
     print(f"We will send {num_data_objects} data objects of size {maxSize} to transfer the needed {len(bin_file)} bytes")
 
     bytes_remaining = len(bin_file)
-
+    progress = tqdm(total = bytes_remaining)
     while(bytes_remaining):
 
-        print(f"Bytes remaining: {bytes_remaining}")
         # TODO: Can we CRC this block without writing, to save time if resuming a disrupted upload?
         
         transfer_size = min(bytes_remaining, maxSize)
@@ -260,10 +262,14 @@ def do_secure_update(fname, identifier):
         set_control(bytes([NRF_DFU_OP.OBJECT_EXECUTE]))
         rd = expect_response()
 
+        # Update progress
+        progress.update(transfer_size)
         bytes_remaining -= transfer_size
 
     # Postvalidate and boot happens automatically on completion
 
+    # Progress bar needs closing
+    progress.close()
 
     print("DONE")
 
