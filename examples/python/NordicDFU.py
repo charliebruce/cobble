@@ -183,9 +183,6 @@ def do_secure_update(fname, identifier):
     maxSize = u32le(rd[3:7])
     offset = u32le(rd[7:11])
     crc = u32le(rd[11:15])
-    from pprint import pprint
-    pprint(rd)
-    print(f"Got OK response selecting init packet - device has maxSize {maxSize}, offset {offset}, crc {crc}")
 
     # Are the values what we'd expect? If so, we're resuming a faulty transfer
     if(crc != crc32(dat_file)) or (offset != len(dat_file)):
@@ -194,7 +191,6 @@ def do_secure_update(fname, identifier):
         initlen = u32tole(len(dat_file))
         set_control(bytes([NRF_DFU_OP.OBJECT_CREATE, NRF_DFU_OBJ_TYPE.COMMAND, initlen[0], initlen[1], initlen[2], initlen[3]]))
         rd = expect_response()
-        print("Got OK response creating init packet")
 
         # Send the init data
         set_data(dat_file)
@@ -202,23 +198,18 @@ def do_secure_update(fname, identifier):
         # CRC it
         set_control(bytes([NRF_DFU_OP.CRC_GET]))
         rd = expect_response()
-        print("Got OK response getting CRC")
         assert NRF_DFU_OP(rd[1]) == NRF_DFU_OP.CRC_GET, "Received weird response"
         offset = u32le(rd[3:7])
         crc = u32le(rd[7:11])
         assert offset == len(dat_file), "Device received fewer bytes than we sent"
         assert crc == crc32(dat_file), f"CRC check failed: Our file is {crc32(dat_file)}, but device got {crc}"
-        pprint(rd)
-        print(f"Got response for CRC: offset {offset}, crc {crc}")
 
         # Prevalidate (execute)
         set_control(bytes([NRF_DFU_OP.OBJECT_EXECUTE]))
         rd = expect_response()
-        print("Got OK response executing")
-        pprint(rd)
 
     # Device is now stuck in DFU mode until an update completes.
-    print("Init packet OK, now sending data...")
+    print("Initialised OK, now sending data...")
 
     # Select the data packet
     set_control(bytes([NRF_DFU_OP.OBJECT_SELECT, NRF_DFU_OBJ_TYPE.DATA]))
@@ -226,8 +217,6 @@ def do_secure_update(fname, identifier):
     maxSize = u32le(rd[3:7])
     offset = u32le(rd[7:11])
     crc = u32le(rd[11:15])
-    pprint(rd)
-    print(f"Got OK response selecting data packet - device has maxSize {maxSize}, offset {offset}, crc {crc}")
 
     assert offset==0, "Resuming not supported!"
 
@@ -248,13 +237,11 @@ def do_secure_update(fname, identifier):
         data_start_idx = len(bin_file) - bytes_remaining
         data_end_idx = data_start_idx + transfer_size
         chunk = bin_file[data_start_idx : data_end_idx]
-        print(f"Transfer size {transfer_size}, so start {data_start_idx} and end {data_end_idx}. Len is {len(dat_file)}")
 
         # Create data object
         datalen = u32tole(transfer_size)
         set_control(bytes([NRF_DFU_OP.OBJECT_CREATE, NRF_DFU_OBJ_TYPE.DATA, datalen[0], datalen[1], datalen[2], datalen[3]]))
         rd = expect_response()
-        print("Got OK response creating data packet")
 
         # Transfer firmware data
         set_data(chunk)
@@ -262,22 +249,16 @@ def do_secure_update(fname, identifier):
         # CRC
         set_control(bytes([NRF_DFU_OP.CRC_GET]))
         rd = expect_response()
-        print("Got OK response getting CRC")
         assert NRF_DFU_OP(rd[1]) == NRF_DFU_OP.CRC_GET, "Received weird response"
         offset = u32le(rd[3:7])
         crc = u32le(rd[7:11])
         expected_offset = len(bin_file) - bytes_remaining + transfer_size
         expected_crc = crc32(bin_file[:data_end_idx])
-        print(f"Is it partial CRC or total CRC? {expected_crc} - {crc}")
         assert offset == expected_offset, f"Device thinks offset is {offset}, we think {expected_offset}"
-        pprint(rd)
-        print(f"Got response for data CRC: offset {offset}, crc {crc}")
 
         # Execute
         set_control(bytes([NRF_DFU_OP.OBJECT_EXECUTE]))
         rd = expect_response()
-        print("Got OK response executing data")
-        pprint(rd)
 
         bytes_remaining -= transfer_size
 
