@@ -148,7 +148,7 @@ def set_legacy_data(data, chunk_size=20):
         next_size = min(chunk_size, len(data)-bytes_sent)
         segment = data[bytes_sent : bytes_sent + next_size]
         cobble.write(legacy_data_uuid, segment)
-        sleep(0.1) # TODO: Use receipt request rather than fixed delay for speed?
+        sleep(0.01) # TODO: Use receipt request rather than fixed delay for speed?
         bytes_sent += next_size
 
 
@@ -296,29 +296,33 @@ def do_legacy_update(fname, identifier):
         sent += 1
 
         # We expect this to fire once every receipt_interval times
-        # TODO: Why do we request 12 but get every 14?!
         # Note - we skip the last one, because it's not a receipt but a success result...
-        if sent % 14 == 0 and (sent < len(slices)): 
+        if sent % receipt_interval == 0 and (sent < len(slices)):
+
             rd = expect_response(legacy=True)
             pprint(rd)
-            #assert rd[0] == NRF_LEGACY_DFU_OP.RECEIPT_NOTIF, "Bad response, expected a receipt"
+            assert rd[0] == NRF_LEGACY_DFU_OP.RECEIPT_NOTIF, "Bad response, expected a receipt"
+            rec_len = u32le(rd[1:5])
+            print(f"Rec len {rec_len}")
             # TODO: Verify the remaining 4 bytes are equal to num_of_firmware_bytes_rcvd
-            sleep(1)
+            sleep(0.1)
 
             # Keep alive by requesting the size every so often???
-            set_legacy_control(bytes([NRF_LEGACY_DFU_OP.REPORT_SIZE]))
-            rd = expect_response(legacy=True)
-            pprint("Size report incoming: ")
-            pprint(rd)
+            # set_legacy_control(bytes([NRF_LEGACY_DFU_OP.REPORT_SIZE]))
+            # rd = expect_response(legacy=True)
+            # pprint(rd)
+            # assert rd[0:3] == bytes([NRF_LEGACY_DFU_OP.RESPONSE, NRF_LEGACY_DFU_OP.REPORT_SIZE, NRF_LEGACY_DFU_RESPONSE.SUCCESS])
+            # fw_received = u32le(rd[3:7])
+            # print(f"Firmware reports received {fw_received} bytes")
 
     # Verify that the firmware thinks the transfer is complete
     rd = expect_response(legacy=True)
     pprint(rd)
-    assert rd == bytes([NRF_LEGACY_DFU_OP.RESPONSE, LEGACY_PROCEDURES.BLE_DFU_VALIDATE_PROCEDURE, NRF_LEGACY_DFU_RESPONSE.SUCCESS]), "Firmware doesn't think transfer is complete"
+    assert rd == bytes([NRF_LEGACY_DFU_OP.RESPONSE, LEGACY_PROCEDURES.BLE_DFU_RECEIVE_APP_PROCEDURE, NRF_LEGACY_DFU_RESPONSE.SUCCESS]), "Firmware doesn't think transfer is complete"
 
     # Validate
     set_legacy_control(bytes([NRF_LEGACY_DFU_OP.VALIDATE_FW]))
-    rd = expect_response()
+    rd = expect_response(legacy=True)
     assert rd == bytes([NRF_LEGACY_DFU_OP.RESPONSE, LEGACY_PROCEDURES.BLE_DFU_VALIDATE_PROCEDURE, NRF_LEGACY_DFU_RESPONSE.SUCCESS]), "Got a bad response"
 
     # Wait whilst target commits the data
