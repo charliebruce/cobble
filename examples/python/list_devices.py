@@ -3,7 +3,7 @@
 # Scan for BLE devices, print them when found
 from cobble import cobble
 from time import sleep
-
+from datetime import datetime, timedelta
 
 def main():
 
@@ -14,8 +14,9 @@ def main():
 
 
     # Results can be dispatched more than once for the same peripheral, but that isn't important here.
-    timeout = 0
-    while(timeout < 10):
+    starttime = datetime.now()
+
+    while((datetime.now() - starttime) < timedelta(seconds=20)):
         
         result = cobble.get_scanresult()
         
@@ -27,7 +28,6 @@ def main():
                 break
 
         sleep(0.01)
-        timeout += 1
 
     # TODO: Await connection event rather than just sleeping
     sleep(3)
