@@ -36,7 +36,17 @@ EXPORTED void cobble_disconnect(void);
 
 EXPORTED void cobble_characteristics_get(void);
 
+// Ask to be notified when a characteristic's value changes.
+// This can be done either as a Notification, or an Indication
+// - Notification does not require confirmation, and so is fast but could occasionally get lost.
+// - Indication requires confirmation, and so is slower but more reliable.
+// If a characteristic supports both notifications and indications:
+// - Linux BlueZ favours notifications: https://github.com/bluez/bluez/blob/7c3ca2a6b940d36c553fabe38066fabc66530dc9/src/shared/gatt-client.c#L1594-L1602
+// - macOS/iOS CoreBluetooth does not document this behaviour, so should be considered undefined (application has no choice)
+// - Currently, the Android implementation only supports Notifications (application can choose)
+// - Currently, the Windows implementation only supports Notifications (application can choose)
 EXPORTED void cobble_subscribe(const char* char_uuid);
+
 EXPORTED void cobble_read(const char* char_uuid);
 EXPORTED void cobble_write(const char* char_uid, uint8_t* data, int len);
 
