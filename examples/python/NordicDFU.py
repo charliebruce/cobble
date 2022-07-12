@@ -12,6 +12,8 @@ from tqdm import tqdm
 dfu_sv_uuid = "0000FE59-0000-1000-8000-00805F9B34FB"
 dfu_ctrl_uuid = "8EC90001-F315-4F60-9FB8-838830DAEA50"
 dfu_data_uuid = "8EC90002-F315-4F60-9FB8-838830DAEA50"
+dfu_buttonless_without_bonds_uuid = "8EC90003-F315-4F60-9FB8-838830DAEA50"
+dfu_buttonless_with_bonds_uuid = "8EC90004-F315-4F60-9FB8-838830DAEA50"
 
 legacy_sv_uuid = "00001530-1212-EFDE-1523-785FEABCD123"
 legacy_ctrl_uuid = "00001531-1212-EFDE-1523-785FEABCD123"
@@ -115,6 +117,20 @@ class LEGACY_PROCEDURES(IntEnum):
     BLE_DFU_VALIDATE_PROCEDURE     = 4                                 #/**< Firmware image validation procedure .*/
     BLE_DFU_PKT_RCPT_REQ_PROCEDURE = 8                                 #/**< Packet receipt notification request procedure. */
 
+class NRF_BUTTONLESS_OP(IntEnum):
+    ENTER_DFU = 0x01
+    SET_ADV_NAME = 0x02
+    RESPONSE = 0x20
+
+class NRF_BUTTONLESS_RESPONSE(IntEnum):
+    INVALID_CODE = 0x00     # The provided opcode was missing or malformed.
+    SUCCESS = 0x01          # The operation completed successfully.
+    NOT_PERMITTED = 0x02    # The provided opcode was invalid.
+    FAILED = 0x04           # The operation failed.
+    INVALID_ADV_NAME = 0x05 # The requested advertisement name was invalid (empty or too long). Only available without bond support.
+    BUSY = 0x06             # The request was rejected due to a ongoing asynchronous operation.
+    NOT_BONDED = 0x07       # The request was rejected because no bond was created.
+
 
 def load_firmware(fname):
     with zipfile.ZipFile(fname) as zf:
@@ -158,15 +174,19 @@ def set_control(data):
 
 def set_legacy_control(data):
     cobble.write(legacy_ctrl_uuid, bytes(data))
-    
-def expect_response(legacy = False):
+
+def await_notification():
 
     # Await a notification
     while (notif := cobble.get_updatevalue()) == None:
         sleep(0.01)
 
-    # Response data
-    rd = notif[1]
+    return notif[1]
+    
+def expect_response(legacy = False):
+
+    # Get the response data
+    rd = await_notification()
 
     # TODO: Handle errors for legacy DFU
     if legacy:
@@ -335,7 +355,38 @@ def do_legacy_update(fname, identifier):
     pass
 
 def do_buttonless_entry(identifier):
-    raise NotImplementedError
+
+    cobble.connect(identifier)
+    # TODO: Await connection event rather than just sleeping
+    sleep(2)
+
+    assert len(cobble.characteristics) > 0, "Failed to find DFU characteristics in time"
+
+    assert not (dfu_sv_uuid, dfu_buttonless_with_bonds_uuid) in cobble.characteristics, "Cobble does not currently support bonds"
+    assert (dfu_sv_uuid, dfu_buttonless_without_bonds_uuid) in cobble.characteristics, "Missing DFU Buttonless (without bonds) characteristic"
+
+    print("Attempting buttonless entry...")
+
+    # We must be awaiting indication, otherwise the device will not take any action
+    cobble.subscribe(dfu_buttonless_without_bonds_uuid)
+    sleep(1)
+
+    # We could set our DFU name to something unique and random using the "Set Device Name" option
+    # However this doesn't seem necessary, as it's unlikely any other devices will be nearby and in DFU mode
+
+    # Trigger DFU entry
+    cobble.write(dfu_buttonless_without_bonds_uuid, bytes([NRF_BUTTONLESS_OP.ENTER_DFU]))
+
+    # Expect the operation to succeed
+    expected_response = bytes([NRF_BUTTONLESS_OP.RESPONSE, NRF_BUTTONLESS_OP.ENTER_DFU, NRF_BUTTONLESS_RESPONSE.SUCCESS])
+    actual_response = await_notification()
+
+    assert actual_response == expected_response, "Device replied with unexpected result when trying to trigger DFU entry"
+
+    print("Waiting for device to reboot...")
+    # TODO: Await disconnection
+    sleep(2)
+
 
 def do_secure_update(fname, identifier):
 
