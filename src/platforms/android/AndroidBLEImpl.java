@@ -288,13 +288,20 @@ public class AndroidBLEImpl {
                 // FIXME: Allow unsubscription
                 boolean enable = true;
 
-                //Set up notifications locally
+                //Set up notifications locally. Despite the name, this also works with indications
                 mGatt.setCharacteristicNotification(op.c, enable);
 
-                //Also tell the remote device that we want notifications
+                //Also tell the remote device that we want notifications or indications
                 //See https://stackoverflow.com/a/32184537
+
                 BluetoothGattDescriptor descriptor = op.c.getDescriptor(CHARACTERISTIC_UPDATE_NOTIFICATION_DESCRIPTOR_UUID);
-                descriptor.setValue(enable ? BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+
+                // Default to notification, if the characteristic supports both
+                if(op.c.getProperties() & BluetoothGattCharacteristic.PROPERTY_NOTIFY) {
+                    descriptor.setValue(enable ? BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+                } else {
+                    descriptor.setValue(enable ? BluetoothGattDescriptor.ENABLE_INDICATION_VALUE : BluetoothGattDescriptor.DISABLE_INDICATION_VALUE);
+                }
                 
                 success = mGatt.writeDescriptor(descriptor);
                 break;
