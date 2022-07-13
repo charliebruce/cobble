@@ -161,7 +161,7 @@ def main_wrap(main_func):
             AppHelper.callAfter(lambda: sys.exit(return_code if return_code else 0))
     except Exception as ex:
         import traceback
-        traceback.print_tb(ex.__traceback__)
+        print(traceback.format_exc())
         if platform.system() == 'Darwin':
             AppHelper.callAfter(lambda: sys.exit(-1))
 
