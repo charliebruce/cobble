@@ -153,12 +153,22 @@ def write(characteristic_uuid, data):
     data_converted = (c_char * len(data))(*data)
     plugin.cobble_write(characteristic_uuid.encode('utf-8'), data_converted, len(data))
     pass
-    
+
+def main_wrap(main_func):
+    try:
+        return_code = main_func()
+        if platform.system() == 'Darwin':
+            AppHelper.callAfter(lambda: sys.exit(return_code if return_code else 0))
+    except Exception as ex:
+        import traceback
+        traceback.print_tb(ex.__traceback__)
+        if platform.system() == 'Darwin':
+            AppHelper.callAfter(lambda: sys.exit(-1))
 
 def run_with(main_func):
 
     print("Running main")
-    t = Thread(target=main_func)
+    t = Thread(target=main_wrap, args=(main_func, ))
     t.daemon = True
     t.start()
 
@@ -168,14 +178,12 @@ def run_with(main_func):
             AppHelper.runConsoleEventLoop(installInterrupt=True)
         except KeyboardInterrupt:
             AppHelper.stopEventLoop()
-            pass
     else:
         try:
             while(t.is_alive()):
                 plugin.cobble_queue_process()
         except KeyboardInterrupt:
             pass
-        pass
 
     print("Cobble completed.")
-    os.kill(os.getpid(), signal.SIGINT)
+    sys.exit(0)
