@@ -320,10 +320,8 @@ def do_legacy_update(fname, identifier):
         if sent % receipt_interval == 0 and (sent < len(slices)):
 
             rd = expect_response(legacy=True)
-            pprint(rd)
             assert rd[0] == NRF_LEGACY_DFU_OP.RECEIPT_NOTIF, "Bad response, expected a receipt"
             rec_len = u32le(rd[1:5])
-            print(f"Rec len {rec_len}")
             # TODO: Verify the remaining 4 bytes are equal to num_of_firmware_bytes_rcvd
             sleep(0.1)
 
