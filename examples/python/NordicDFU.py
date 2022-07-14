@@ -265,7 +265,7 @@ def do_legacy_update(fname):
 
     # Listen for changes on the DFU Control characteristic
     cobble.subscribe(legacy_ctrl_uuid)
-    sleep(4)
+    sleep(1)
 
     mtu = cobble.plugin.cobble_max_writesize_get(False)
     print(f"Maximum packet size determined to be {mtu}")
@@ -352,8 +352,9 @@ def do_legacy_update(fname):
 def do_buttonless_entry(identifier):
 
     cobble.connect(identifier)
-    # TODO: Await connection event rather than just sleeping
-    sleep(2)
+    assert cobble.await_connection(), "Failed to connect to device in time"
+
+    sleep(1) # Characteristic discovery
 
     assert len(cobble.characteristics) > 0, "Failed to find DFU characteristics in time"
 
@@ -379,8 +380,7 @@ def do_buttonless_entry(identifier):
     assert actual_response == expected_response, "Device replied with unexpected result when trying to trigger DFU entry"
 
     print("Waiting for device to reboot...")
-    # TODO: Await disconnection
-    sleep(2)
+    cobble.await_disconnection()
 
 
 def do_secure_update(fname):
@@ -397,7 +397,7 @@ def do_secure_update(fname):
 
     # Listen for changes on the DFU Control characteristic
     cobble.subscribe(dfu_ctrl_uuid)
-    sleep(4)
+    sleep(1)
 
     mtu = cobble.plugin.cobble_max_writesize_get(False)
     print(f"Maximum packet size determined to be {mtu}")
@@ -503,8 +503,10 @@ def do_secure_update(fname):
 def do_update(fname, identifier):
 
     cobble.connect(identifier)
-    # TODO: Await connection event rather than just sleeping
-    sleep(2)
+    assert cobble.await_connection(), "Failed to connect to device within timeout period"
+
+    # After connection, give it another second to discover characteristics
+    sleep(1)
 
     assert len(cobble.characteristics) > 0, "Failed to find DFU characteristics in time"
 
