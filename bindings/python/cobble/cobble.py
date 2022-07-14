@@ -56,6 +56,8 @@ plugin.cobble_subscribe.restype = None
 plugin.cobble_subscribe.argtypes = [c_char_p]
 plugin.cobble_write.restype = None
 plugin.cobble_write.argtypes = [c_char_p, c_char_p, c_int]
+plugin.cobble_max_writesize_get.restype = c_int
+plugin.cobble_max_writesize_get.argtypes = [c_bool]
 
 # Windows only
 plugin.cobble_queue_process.restype = None
