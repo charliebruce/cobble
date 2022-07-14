@@ -307,6 +307,10 @@ EXPORTED void cobble_scan_start(const char* svc_uuids) {
 
 }
 
+int cobble_max_writesize_get(bool withResponse) {
+    return 20; // Minimum spec value. Always safe, but slow.
+}
+
 void onValueChange(GattCharacteristic const& charateristic, GattValueChangedEventArgs const& args)
 {
 		//std::wcout << std::hex << "\t\tNotified GattCharacteristic - Guid: [" << ToString(charateristic.Uuid()).c_str() << "]" << std::endl;

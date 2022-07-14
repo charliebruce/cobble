@@ -143,7 +143,7 @@ def load_firmware(fname):
     return (bin_file, dat_file)
 
 
-def set_data(data, chunk_size=244):
+def set_data(data, chunk_size=20):
     # When reviewing bootloader code - note that these are still handled by nrf_dfu_req_handler
     # They just have the type NRF_DFU_OP_OBJECT_WRITE appended automatically
     bytes_sent = 0
@@ -271,6 +271,9 @@ def do_legacy_update(fname, identifier):
     cobble.subscribe(legacy_ctrl_uuid)
     sleep(4)
 
+    mtu = cobble.plugin.cobble_max_writesize_get(False)
+    print(f"Maximum packet size determined to be {mtu}")
+    
     print("Initialising Legacy DFU...")
 
     # Start DFU process
@@ -406,10 +409,10 @@ def do_secure_update(fname, identifier):
     cobble.subscribe(dfu_ctrl_uuid)
     sleep(4)
 
-    print("Initialising DFU...")
+    mtu = cobble.plugin.cobble_max_writesize_get(False)
+    print(f"Maximum packet size determined to be {mtu}")
 
-    # TODO: For speed, request maximum MTU?  MTU 247 (244 usable bytes) better than MTU 23 (20 usable bytes)
-    # TODO: Exchange any information we might be interested in.
+    print("Initialising DFU...")
 
     # Flow as in:
     # https:#infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk5.v14.1.0%2Flib_bootloader_dfu_process.html
@@ -430,7 +433,7 @@ def do_secure_update(fname, identifier):
         rd = expect_response()
 
         # Send the init data
-        set_data(dat_file)
+        set_data(dat_file, mtu)
 
         # CRC it
         set_control(bytes([NRF_DFU_OP.CRC_GET]))
@@ -480,7 +483,7 @@ def do_secure_update(fname, identifier):
         rd = expect_response()
 
         # Transfer firmware data
-        set_data(chunk)
+        set_data(chunk, mtu)
 
         # CRC
         set_control(bytes([NRF_DFU_OP.CRC_GET]))
