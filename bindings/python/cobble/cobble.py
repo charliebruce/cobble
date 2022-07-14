@@ -8,6 +8,7 @@ import os
 from queue import Queue, Empty
 import signal
 from enum import IntEnum
+from datetime import datetime, timedelta
 
 # Required for runloop
 if platform.system() == 'Darwin':
@@ -68,6 +69,7 @@ plugin.cobble_queue_process.restype = None
 scanresults = Queue()
 updatevalues = Queue()
 characteristics = []
+connected = False
 
 # Scan results from the library are sent via this callback
 # For simplicity of use, we simply add to a queue
@@ -106,10 +108,14 @@ plugin.register_updatevalue_cb(updatevalue_cb)
 
 @CFUNCTYPE(None, c_char_p, c_int)
 def connectionstatus_cb(identifier, e):
+    global connected
     print(f"Got a connection status change event for device {identifier}: {e}")
     if ConnectionEvent(e) == ConnectionEvent.DidDisconnect:
         characteristics = [] # Clear the cache
+        connected = False
         # Preserve queued updates though, we might have a backlog
+    if ConnectionEvent(e) == ConnectionEvent.DidConnect:
+        connected = True
 plugin.register_connectionstatus_cb(connectionstatus_cb)
 
 def init():
@@ -134,6 +140,20 @@ def stop_scan():
 def connect(name):
     plugin.cobble_connect(name.encode('utf-8'))
     pass
+
+def await_connection(timeout=30):
+    starttime = datetime.now()
+    while((datetime.now() - starttime) < timedelta(seconds=timeout)):
+        if connected:
+            return True
+    return False
+
+def await_disconnection(timeout=30):
+    starttime = datetime.now()
+    while((datetime.now() - starttime) < timedelta(seconds=timeout)):
+        if not connected:
+            return True
+    return False
 
 def get_scanresult():
     try:
