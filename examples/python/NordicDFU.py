@@ -246,16 +246,12 @@ def u16tole(i):
 # Why do we write 14 packets * 20 bytes = 280 bytes, but report 240 bytes received?
 
 
-def do_legacy_update(fname, identifier):
+def do_legacy_update(fname):
     # Legacy DFU was a prototype / early implementation of DFU up until around 2016. It was
     # replaced with Secure DFU around 2017 or so. Older devices (around SDK 10) will still
     # require this legacy approach to be used. The structure is broadly similar.
 
     bin_file, dat_file = load_firmware(fname)
-
-    cobble.connect(identifier)
-    # TODO: Await connection event rather than just sleeping
-    sleep(2)
 
     assert len(cobble.characteristics) > 0, "Failed to find DFU characteristics in time"
 
@@ -352,8 +348,6 @@ def do_legacy_update(fname, identifier):
     # Activate and reset
     set_legacy_control(bytes([NRF_LEGACY_DFU_OP.ACTIVATE_IMG_RST]))
     
-    print("DONE")
-    pass
 
 def do_buttonless_entry(identifier):
 
@@ -389,13 +383,9 @@ def do_buttonless_entry(identifier):
     sleep(2)
 
 
-def do_secure_update(fname, identifier):
+def do_secure_update(fname):
 
     bin_file, dat_file = load_firmware(fname)
-
-    cobble.connect(identifier)
-    # TODO: Await connection event rather than just sleeping
-    sleep(2)
 
     assert len(cobble.characteristics) > 0, "Failed to find DFU characteristics in time"
 
@@ -508,5 +498,24 @@ def do_secure_update(fname, identifier):
     # Progress bar needs closing
     progress.close()
 
-    print("DONE")
+
+
+def do_update(fname, identifier):
+
+    cobble.connect(identifier)
+    # TODO: Await connection event rather than just sleeping
+    sleep(2)
+
+    assert len(cobble.characteristics) > 0, "Failed to find DFU characteristics in time"
+
+    if (dfu_sv_uuid, dfu_ctrl_uuid) in cobble.characteristics:
+        # Secure DFU
+        do_secure_update(fname)
+    elif (legacy_sv_uuid, legacy_ctrl_uuid) in cobble.characteristics:
+        # Legacy DFU
+        do_legacy_update(fname)
+    else:
+        assert False, "Failed to find either Secure or Legacy DFU characteristic"
+
+    print("DFU completed.")
 
