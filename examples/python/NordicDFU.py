@@ -153,7 +153,7 @@ def set_data(data, chunk_size=20):
         next_size = min(chunk_size, len(data)-bytes_sent)
         segment = data[bytes_sent : bytes_sent + next_size]
         cobble.write(dfu_data_uuid, segment)
-        sleep(0.1) # TODO: Use receipt request rather than fixed delay for speed?
+        sleep(0.01) # TODO: Use receipt request rather than fixed delay for speed?
         bytes_sent += next_size
 
 def set_legacy_data(data, chunk_size=20):
