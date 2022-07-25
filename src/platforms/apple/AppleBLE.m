@@ -380,6 +380,16 @@ void cobble_scan_stop(void) {
     [appleBackend pauseScan];
 }
 
+// Determine the largest value that can be written safely to the current peripheral
+int cobble_max_writesize_get(bool withResponse) {
+
+    if(withResponse)
+        return [[appleBackend currentPeripheral] maximumWriteValueLengthForType:CBCharacteristicWriteWithResponse];
+
+    return [[appleBackend currentPeripheral] maximumWriteValueLengthForType:CBCharacteristicWriteWithoutResponse];
+
+}
+
 // Run loop handling is required for console apps / some other specific use cases
 bool cobble_shutdown_requested = false;
 

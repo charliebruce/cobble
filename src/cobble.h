@@ -1,5 +1,6 @@
 // Common Bindings for Bluetooth LE
 #include <stdint.h>
+#include <stdbool.h>
 
 
 // Compatibility with Windows
@@ -50,6 +51,7 @@ EXPORTED void cobble_subscribe(const char* char_uuid);
 EXPORTED void cobble_read(const char* char_uuid);
 EXPORTED void cobble_write(const char* char_uid, uint8_t* data, int len);
 
+EXPORTED int cobble_max_writesize_get(bool withResponse);
 
 typedef enum {
     Uninitialised = 0,

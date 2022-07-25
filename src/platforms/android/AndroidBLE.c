@@ -141,6 +141,10 @@ void cobble_subscribe(const char* characteristic) {
 
 }
 
+int cobble_max_writesize_get(bool withResponse) {
+    return 20; // Minimum spec value. Always safe, but slow.
+}
+
 JNIEXPORT void JNICALL Java_com_cjb248_cobble_AndroidBLEImpl_SetStatus(JNIEnv* env, jobject obj, jint newStatus) {
 
     // We handle it this way to avoid needing duplicate definitions of CobbleStatus and CobbleErrorCode between C and Java
