@@ -5,6 +5,7 @@ from time import sleep
 from enum import IntEnum
 from binascii import crc32
 from tqdm import tqdm
+from datetime import datetime, timedelta
 
 # Implementation of Nordic Secure BLE using Cobble
 # Legacy has subtle differences.
@@ -505,8 +506,11 @@ def do_update(fname, identifier):
     cobble.connect(identifier)
     assert cobble.await_connection(), "Failed to connect to device within timeout period"
 
-    # After connection, give it another second to discover characteristics
-    sleep(1)
+    # After connection, give it a short while to discover characteristics
+    starttime = datetime.now()
+    while((datetime.now() - starttime) < timedelta(seconds=10)):
+        if (dfu_sv_uuid, dfu_ctrl_uuid) in cobble.characteristics or (legacy_sv_uuid, legacy_ctrl_uuid) in cobble.characteristics:
+            break
 
     assert len(cobble.characteristics) > 0, "Failed to find DFU characteristics in time"
 
