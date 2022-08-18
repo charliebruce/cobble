@@ -215,7 +215,7 @@ EXPORTED void cobble_connect(const char* identifier) {
 		// Monitor for connection status changes
 		dev.ConnectionStatusChanged(connectionStatusChangedHandler);
 
-#if 0
+#if 1
 		// Also create a GattSession
 		IAsyncOperation<GattSession> sessionCreation = GattSession::FromDeviceIdAsync(id);
 		sessionCreation.Completed([dev](IAsyncOperation<GattSession> sss, AsyncStatus as_status2) {
@@ -331,7 +331,10 @@ EXPORTED void cobble_scan_start(const char* svc_uuids) {
 }
 
 int cobble_max_writesize_get(bool withResponse) {
-    return 20; // Minimum spec value. Always safe, but slow.
+	if (sess != nullptr)
+		return sess.MaxPduSize()-3;
+	else
+		return 20; // Safe but slow
 }
 
 void onValueChange(GattCharacteristic const& charateristic, GattValueChangedEventArgs const& args)
