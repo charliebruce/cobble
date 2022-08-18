@@ -68,7 +68,7 @@ EXPORTED CobbleStatus cobble_status(void);
 typedef enum {
     NoError = 0,
     HardwareUnsupported,
-    HardwareTurnedOff,
+    HardwareTurnedOff,      // Bluetooth adapter disabled. Can occur at initialisation or at scan start, depending on platform.
     PermissionsNotGranted,
     UnknownError = 0xFF
 } CobbleErrorCode;
