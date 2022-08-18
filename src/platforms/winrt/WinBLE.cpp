@@ -215,7 +215,7 @@ EXPORTED void cobble_connect(const char* identifier) {
 		sessionCreation.Completed([dev](IAsyncOperation<GattSession> sss, AsyncStatus as_status2) {
 
 			sess = sss.GetResults();
-			sess.MaintainConnection();
+			sess.MaintainConnection(true);
 			sess.SessionStatusChanged(sessionStatusChangedHandler);
 
 			// Discover services for the device
