@@ -354,12 +354,18 @@ EXPORTED void cobble_subscribe(const char* characteristic) {
 			
 			cc.ValueChanged(onValueChange);
 
+			GattClientCharacteristicConfigurationDescriptorValue dv;
+
+			// If notifications are available, use them. Otherwise, use indications.
 			if (((cc.CharacteristicProperties()) & GattCharacteristicProperties::Notify) != GattCharacteristicProperties::None) {
-				cc.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::Notify);
+				dv = GattClientCharacteristicConfigurationDescriptorValue::Notify;
 			}
 			else {
-				cc.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::Indicate);
+				dv = GattClientCharacteristicConfigurationDescriptorValue::Indicate;
 			}
+
+			cc.WriteClientCharacteristicConfigurationDescriptorAsync(dv);
+
 			return;
 		}
 	}
