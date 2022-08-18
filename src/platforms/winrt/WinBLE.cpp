@@ -26,10 +26,12 @@ using namespace Windows::Devices::Enumeration;
 #pragma comment(lib, "windowsapp")
 
 #include <iostream>
+#include <winerror.h>
 using namespace Windows::Storage::Streams;
 
 
 CobbleStatus status = Uninitialised;
+CobbleErrorCode error = NoError;
 
 // Bluetooth stack state we track
 std::list<GattDeviceService> serviceCache;
@@ -40,6 +42,10 @@ GattSession sess { nullptr };
 
 __declspec(dllexport) CobbleStatus cobble_status(void) {
 	return status;
+}
+
+__declspec(dllexport)CobbleErrorCode cobble_error_get(void) {
+	return error;
 }
 
 void advertisementHandler(BluetoothLEAdvertisementWatcher watcher, BluetoothLEAdvertisementReceivedEventArgs args) {
@@ -301,7 +307,24 @@ EXPORTED void cobble_scan_start(const char* svc_uuids) {
 
 	advWatcher = BluetoothLEAdvertisementWatcher();
 	advWatcher.Received(advertisementHandler);
-	advWatcher.Start();
+	try {
+		advWatcher.Start();
+	}
+	catch (hresult_error& ex) {
+
+		if (ex.to_abi() == HRESULT_FROM_WIN32(ERROR_DEVICE_NOT_AVAILABLE)) {
+			cout << "Cannot start scanning - device is not available." << endl;
+			status = CobbleError;
+			error = HardwareTurnedOff;
+		}
+		else {
+			cout << "Error whilst starting scan: " << ex.code() << endl;
+			status = CobbleError;
+			error = UnknownError;
+		}
+
+		return;
+	}
 
 	status = Scanning;
 
