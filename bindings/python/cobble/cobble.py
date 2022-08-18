@@ -207,5 +207,6 @@ def run_with(main_func):
         except KeyboardInterrupt:
             pass
 
+    plugin.cobble_deinit()
     print("Cobble completed.")
     sys.exit(0)
