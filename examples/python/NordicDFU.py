@@ -357,7 +357,7 @@ def do_buttonless_entry(identifier):
 
     sleep(1) # Characteristic discovery
 
-    assert len(cobble.characteristics) > 0, "Failed to find DFU characteristics in time"
+    assert len(cobble.characteristics) > 0, "Failed to find buttonless characteristics in time"
 
     assert not (dfu_sv_uuid, dfu_buttonless_with_bonds_uuid) in cobble.characteristics, "Cobble does not currently support bonds"
     assert (dfu_sv_uuid, dfu_buttonless_without_bonds_uuid) in cobble.characteristics, "Missing DFU Buttonless (without bonds) characteristic"
