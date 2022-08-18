@@ -327,7 +327,13 @@ EXPORTED void cobble_subscribe(const char* characteristic) {
 			//std::cout << "MATCHED " << ToString(cc.Uuid()).c_str() << std::endl;
 			
 			cc.ValueChanged(onValueChange);
-			cc.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::Notify);
+
+			if (((cc.CharacteristicProperties()) & GattCharacteristicProperties::Notify) != GattCharacteristicProperties::None) {
+				cc.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::Notify);
+			}
+			else {
+				cc.WriteClientCharacteristicConfigurationDescriptorAsync(GattClientCharacteristicConfigurationDescriptorValue::Indicate);
+			}
 			return;
 		}
 	}

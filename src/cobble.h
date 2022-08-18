@@ -45,7 +45,7 @@ EXPORTED void cobble_characteristics_get(void);
 // - Linux BlueZ favours notifications: https://github.com/bluez/bluez/blob/7c3ca2a6b940d36c553fabe38066fabc66530dc9/src/shared/gatt-client.c#L1594-L1602
 // - macOS/iOS CoreBluetooth does not document this behaviour, so should be considered undefined (application has no choice)
 // - Currently, the Android implementation only supports Notifications (application can choose)
-// - Currently, the Windows implementation only supports Notifications (application can choose)
+// - Windows allows the application to choose - Cobble chooses Notifications when possible
 EXPORTED void cobble_subscribe(const char* char_uuid);
 
 EXPORTED void cobble_read(const char* char_uuid);
