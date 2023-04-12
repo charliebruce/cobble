@@ -47,8 +47,11 @@ The bindings are rough examples only, you should use them as a starting point ra
 
 ### Building
 
-Run the relevant build script within `src/`. Binaries are created within `src/build`.
-
+* Android, macOS, iOS: Run the relevant build script within `src/`.
+* Windows: Open `src/build-environments/Windows/cobble.sln` in Visual Studio and build it.
+ 
+Binaries are created within `src/build`.
+ 
 ### C/C++
 
 See C header file `src/cobble.h`.
