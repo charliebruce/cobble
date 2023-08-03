@@ -19,6 +19,7 @@ It will achieve this by channeling the platform-specific calls / functionality t
 ## Potential Alternatives
 
 * [btleplug](https://github.com/deviceplug/btleplug) might be a more sensible choice, if you need robust Linux support and/or are happy using Rust (or can write suitable bindings). (It's possible that I'll turn this project into Python/Unity bindings for btleplug in the future).
+* [bleak](https://pypi.org/project/bleak/) for Python.
 
 ## Uses
 
