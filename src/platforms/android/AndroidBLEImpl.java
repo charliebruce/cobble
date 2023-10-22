@@ -32,7 +32,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
-@TargetApi(24)
+@TargetApi(26)
 public class AndroidBLEImpl {
 
     private static enum GattOperationType {
@@ -133,7 +133,7 @@ public class AndroidBLEImpl {
             return;
         }
 
-        getCurrentActivity().registerReceiver(mReceiver, new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED));
+        getCurrentActivity().registerReceiver(mReceiver, new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED), 4); // 4: RECEIVER_NOT_EXPORTED
 
         final BluetoothManager bluetoothManager = (BluetoothManager) getCurrentActivity().getSystemService(Context.BLUETOOTH_SERVICE);
         mBluetoothAdapter = bluetoothManager.getAdapter();
